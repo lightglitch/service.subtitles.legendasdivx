@@ -152,6 +152,7 @@ def xbmc_extract(SRC, DEST):
             log("Extracting (back into the ff loop: '%s' to '%s'" % (now_SRC,now_DEST))
 
 def urlpost(query, lang, page):
+
     username = _addon.getSetting( 'LDuser' )
     password = _addon.getSetting( 'LDpass' )
     login_postdata = urllib.parse.urlencode({'username' : username, 'password' : password, 'login' : 'Login', 'sid' : ''}).encode("utf-8")
@@ -159,15 +160,16 @@ def urlpost(query, lang, page):
     my_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
     urllib.request.install_opener(my_opener)
     request = urllib.request.Request(main_url + 'forum/ucp.php?mode=login', login_postdata)
-    response = urllib.request.urlopen(request, None, 6.5).read().decode('ISO-8859-1')   
-    log("LOGIN_FIRST_OK?: %s" % response)
+    response = urllib.request.urlopen(request, None, 6.5).read().decode('ISO-8859-1')
+
     postdata = urllib.parse.urlencode({'query' : query, 'form_cat' : lang}).encode("utf-8")
+    my_opener.addheaders = [('Referer', main_url + 'modules.php?name=Downloads&file=jz&d_op=search&op=_jz00&page='+ str(page))]
+    urllib.request.install_opener(my_opener)
     request = urllib.request.Request(main_url + 'modules.php?name=Downloads&file=jz&d_op=search&op=_jz00&page='+ str(page), postdata)
     log("POST url page: %s" % page)
     log("POST url data: %s" % postdata)
     try:
         response = urllib.request.urlopen(request, None, 6.5).read().decode('ISO-8859-1')
-        log("RESPONSE: %s" % response)
     except urllib.error.URLError as e:
         response = ''
         xbmc.executebuiltin(('Notification(%s,%s,%d)' % (_scriptname , _language(32025).encode('utf8'),5000)))
@@ -191,13 +193,13 @@ def getallsubs(searchstring, languageshort, languagelong, file_original_path, se
     while re.search(subtitle_pattern, content, re.IGNORECASE | re.DOTALL | re.MULTILINE) and page < 6:
         for matches in re.finditer(subtitle_pattern, content, re.IGNORECASE | re.DOTALL | re.X):
             uploader = matches.group(3)
-            hits = matches.group(6)
+            hits = matches.group(6).replace(' <img src="modules/Downloads/images/superpopular.gif" alt="_SUPERPOPULAR">','').replace(' <img src="modules/Downloads/images/popular.gif" alt="_POPULAR">','')
             id = matches.group(5)
             id = str.split(id, '"')
             id = id[0]
             movieyear = matches.group(2)
             no_files = matches.group(4)
-            downloads = int(matches.group(6)) / 200
+            downloads = int(hits) / 200
             if (downloads > 5): downloads=5
             filename = str.strip(matches.group(1))
             desc_ori = str.strip(matches.group(8))
@@ -245,7 +247,7 @@ def getallsubs(searchstring, languageshort, languagelong, file_original_path, se
             if _parentfolder == '2':
                 if (searchstring_notclean != ""):
                     sync = False
-                    if str.lower(searchstring_notclean) in str.lower(desc.decode('utf8', 'ignore')): sync = True
+                    if str.lower(searchstring_notclean) in str.lower(desc): sync = True
                 else:
                     if (str.lower(dirsearch_check[-1]) == "rar") or (str.lower(dirsearch_check[-1]) == "cd1") or (str.lower(dirsearch_check[-1]) == "cd2"):
                         sync = False
@@ -362,7 +364,7 @@ class Main:
 				searchstring = "%s S%#02dE%#02d" % (tvshow, int(season), int(episode))
 				log(u"Search: Title TV LIBRARY String = %s" % (searchstring,))
 			elif title != '' and tvshow == '':
-				searchstring = '"' + title + ' ' + year + '"'
+				searchstring = title + ' ' + year
 				log(u"Search: Title MOVIE LIBRARY String = %s" % (searchstring,))
 			else:
 				if 'rar' in israr and searchstring is not None:
